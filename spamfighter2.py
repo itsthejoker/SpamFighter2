@@ -3,9 +3,9 @@ import OAuth2Util
 import re
 import collections
 import logging
-from time import sleep
+from time import strftime, sleep
 
-r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:0.6 (by /u/itsthejoker)')
+r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:0.7 (by /u/itsthejoker)')
 o = OAuth2Util.OAuth2Util(r)
 o.refresh(force=True)
 
@@ -77,13 +77,13 @@ def update_wiki(old_wiki_info, subreddit):
                      "leaving the wiki alone.")
 
 
-def moderate_posts(subreddit):
+def moderate_posts(old_wiki_info, subreddit):
     sub_logprint(subreddit,
                  "Checking existing posts for violations of the domain "
                  "banned list...")
     new_posts = r.get_subreddit(subreddit)
     for submission in new_posts.get_new(limit=100):
-        for spamsite in spam_websites:
+        for spamsite in old_wiki_info.spam_websites:
             if spamsite in submission.url:
                 if not submission.author:
                     author_name = '[deleted]'
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         new_information = retrieve_wiki()
         for sub in subreddits:
             update_wiki(new_information, sub)
-            moderate_posts(sub)
+            moderate_posts(new_information, sub)
 
         logging.info("Done. Sleeping!")
         sleep(3600)
