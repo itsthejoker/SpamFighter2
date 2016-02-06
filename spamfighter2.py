@@ -43,11 +43,9 @@ def post_reader(post):
     spam_site = post_parser1.search(post)
 
     if spam_site is None:
-        logging.info("Parser1 failed on {}".format(post))
         spam_site = post_parser2.search(post)
 
         if spam_site is None:
-            logging.info("Parser2 failed on {}".format(post))
             spam_site = post_parser3.search(post)
 
             if spam_site is None:
