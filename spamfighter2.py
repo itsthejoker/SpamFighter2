@@ -13,11 +13,17 @@ o.refresh(force=True)
 comment_parser = re.compile("""\[\*\*(?P<spam_url>.*)\*\*\]""")
 wiki_parser = re.compile("""domain: (\[.*)""")
 
-# must return group 1 on parser1 and parser2
+# must return group 1 on parser1, 2, & 3
+# must return group 0 on parser4
 # this is because I'm bad at regex
-post_parser1 = re.compile("""[\( ]\W(?P<spamsite>.*\.com)[\) ]""")
-post_parser2 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
-post_parser3 = re.compile("""^[\w\-]+\.com""")
+post_parser1 = re.compile("""TheIdiotSpammer: (?P<spamsite>.*)""")
+post_parser2 = re.compile("""[\( ]\W(?P<spamsite>.*\.com)[\) ]""")
+post_parser3 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
+post_parser4 = re.compile("""^[\w\-]+\.[\w]+\\b""")
+post_parser5 = re.compile("""\\b \((?P<asdf>.*)\)\(""")
+
+post_parsers = {post_parser1: 1, post_parser2: 1, post_parser3: 1,
+                post_parser4: 0, post_parser5: 1}
 
 returned_wiki = collections.namedtuple('Returned_Wiki', ['spam_websites',
                                                          'old_wiki',
@@ -40,22 +46,11 @@ def comment_reader(comment):
 
 def post_reader(post):
 
-    spam_site = post_parser1.search(post)
-
-    if spam_site is None:
-        spam_site = post_parser2.search(post)
-
-        if spam_site is None:
-            spam_site = post_parser3.search(post)
-
-            if spam_site is None:
-                logging.info("All parsers failed on {}".format(post))
-        else:
-            return(spam_site.group(1))
-    else:
-        return(spam_site.group(1))
-
-    return(spam_site.group(0))
+    for parser, group_num in post_parsers.iteritems():
+        spam_site = parser.search(post)
+        if spam_site is not None:
+            return(spam_site.group(group_num))
+    logging.info("Unable to find url in {}".format(post))
 
 
 def wiki_reader(wiki):
@@ -93,7 +88,7 @@ def get_blogspammr_recent():
             spam_websites = add_site(comment_reader, comment.body)
 
     for post in submitted_gen:
-        if ".com" in post.title.lower():
+        if "." in post.title.lower():
             post.title = clean(post.title)
 
             if "reddit.com" in post.title:
