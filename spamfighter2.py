@@ -186,7 +186,6 @@ def check_for_updates():
 
     try:
         spamfighter2_source = urllib2.urlopen(__source__).read()
-        print spamfighter2_source
     except urllib2.HTTPError:
         logging.info("There appears to be an issue contacting Github. Skipping"
                      " the update check.")
