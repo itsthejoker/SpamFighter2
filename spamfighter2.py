@@ -5,6 +5,7 @@ import collections
 import logging
 import copy
 import urllib2
+import requests
 from time import sleep
 
 __author__ = "https://github.com/itsthejoker"
@@ -26,13 +27,14 @@ post_parser1 = re.compile("""TheIdiotSpammer: (?P<spamsite>.*)""")
 post_parser2 = re.compile("""[\( ]\W(?P<spamsite>.*\.com)[\) ]""")
 post_parser3 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
 post_parser4 = re.compile("""^[\w\-]+\.[\w]+\\b""")
-post_parser5 = re.compile("""\\b \((?P<asdf>.*)\)\(""")
+post_parser5 = re.compile("""\\b \((?P<spamsite>.*)\)\(""")
+post_parser6 = re.compile("""Domain spammer - (?P<spamsite>[a-zA-Z\.]+)""")
 
 update_parser = re.compile("""__version__ = (?P<version>[\d\.]+)""")
 old_update_parser = re.compile("""itsthejoker\.spamfighter:(?P<version>[\d\.]+)""")
 
 post_parsers = {post_parser1: 1, post_parser2: 1, post_parser3: 1,
-                post_parser4: 0, post_parser5: 1}
+                post_parser4: 0, post_parser5: 1, post_parser6: 1}
 
 returned_wiki = collections.namedtuple('Returned_Wiki', ['spam_websites',
                                                          'old_wiki',
@@ -231,9 +233,13 @@ if __name__ == '__main__':
                 moderate_posts(new_spam_list, sub)
 
         except praw.errors.HTTPException:
-            logging.info("EXCEPTION: PRAW threw a HTTP error; waiting 5 "
-                         "minutes and trying again.")
+            logging.warning("EXCEPTION: PRAW threw a HTTP error; waiting 5 "
+                            "minutes and trying again.")
             sleep(300)
+
+        except requests.exceptions.ConnectionError:
+            logging.warning("Issue with requesting new page; waiting 5 "
+                            "minutes.")
 
         else:
             logging.info("Done. Sleeping!")
