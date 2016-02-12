@@ -30,6 +30,9 @@ returned_wiki = collections.namedtuple('Returned_Wiki', ['spam_websites',
                                                          'old_domains'])
 subreddits = ["subreddits", "that", "you_have", "moderator", "access_to"]
 
+# list of things to ignore post titles for
+title_exceptions = ["SPAM FREE", "I'm doing my job but"]
+
 blogspammr = r.get_redditor('BlogSpammr')
 
 
@@ -45,7 +48,6 @@ def comment_reader(comment):
 
 
 def post_reader(post):
-
     for parser, group_num in post_parsers.iteritems():
         spam_site = parser.search(post)
         if spam_site is not None:
@@ -90,11 +92,19 @@ def get_blogspammr_recent():
     for post in submitted_gen:
         if "." in post.title.lower():
             post.title = clean(post.title)
+            post.title = post.title.replace('reddit.com', '')
 
-            if "reddit.com" in post.title:
-                post.title = post.title.replace('reddit.com', '')
+            excepted = False
 
-            spam_websites = add_site(post_reader, post.title)
+            for post_exception in title_exceptions:
+                if post_exception in post.title:
+                    excepted = True
+
+            if not excepted:
+                spam_websites = add_site(post_reader, post.title)
+            else:
+                logging.debug('Skipping post "{}" for being on the exception'
+                              ' list.'.format(post.title))
 
     logging.info("Retrieved new list!")
     return(spam_websites)
@@ -170,10 +180,17 @@ if __name__ == '__main__':
     logging.info("-"*50)
 
     while True:
-        spam_websites = get_blogspammr_recent()
-        for sub in subreddits:
-            new_spam_list = update_wiki(spam_websites, sub)
-            moderate_posts(new_spam_list, sub)
+        try:
+            spam_websites = get_blogspammr_recent()
+            for sub in subreddits:
+                new_spam_list = update_wiki(spam_websites, sub)
+                moderate_posts(new_spam_list, sub)
 
-        logging.info("Done. Sleeping!")
-        sleep(3600)
+        except praw.errors.HTTPException:
+            logging.info("EXCEPTION: PRAW threw a HTTP error; waiting 5 "
+                         "minutes and trying again.")
+            sleep(300)
+
+        else:
+            logging.info("Done. Sleeping!")
+            sleep(3600)
