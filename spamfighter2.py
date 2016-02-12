@@ -8,8 +8,8 @@ import urllib2
 from time import sleep
 
 __author__ = "https://github.com/itsthejoker"
-__version__ = 0.92
-__source__ = "https://github.com/itsthejoker/SpamFighter2/blob/master/spamfighter2.py"
+__version__ = 0.93
+__source__ = "https://raw.githubusercontent.com/itsthejoker/SpamFighter2/master/spamfighter2.py"
 
 r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:{} (by /u/itsthejoker)'
                 .format(__version__))
@@ -28,8 +28,8 @@ post_parser3 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
 post_parser4 = re.compile("""^[\w\-]+\.[\w]+\\b""")
 post_parser5 = re.compile("""\\b \((?P<asdf>.*)\)\(""")
 
-old_update_parser = re.compile("""itsthejoker\.spamfighter:(?P<version>[\d\.]+)""")
 update_parser = re.compile("""__version__ = (?P<version>[\d\.]+)""")
+old_update_parser = re.compile("""itsthejoker\.spamfighter:(?P<version>[\d\.]+)""")
 
 post_parsers = {post_parser1: 1, post_parser2: 1, post_parser3: 1,
                 post_parser4: 0, post_parser5: 1}
@@ -186,6 +186,7 @@ def check_for_updates():
 
     try:
         spamfighter2_source = urllib2.urlopen(__source__).read()
+        print spamfighter2_source
     except urllib2.HTTPError:
         logging.info("There appears to be an issue contacting Github. Skipping"
                      " the update check.")
