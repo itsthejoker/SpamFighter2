@@ -4,9 +4,15 @@ import re
 import collections
 import logging
 import copy
+import urllib2
 from time import sleep
 
-r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:0.9 (by /u/itsthejoker)')
+__author__ = "https://github.com/itsthejoker"
+__version__ = 0.92
+__source__ = "https://github.com/itsthejoker/SpamFighter2/blob/master/spamfighter2.py"
+
+r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:{} (by /u/itsthejoker)'
+                .format(__version__))
 o = OAuth2Util.OAuth2Util(r)
 o.refresh(force=True)
 
@@ -22,6 +28,9 @@ post_parser3 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
 post_parser4 = re.compile("""^[\w\-]+\.[\w]+\\b""")
 post_parser5 = re.compile("""\\b \((?P<asdf>.*)\)\(""")
 
+old_update_parser = re.compile("""itsthejoker\.spamfighter:(?P<version>[\d\.]+)""")
+update_parser = re.compile("""__version__ = (?P<version>[\d\.]+)""")
+
 post_parsers = {post_parser1: 1, post_parser2: 1, post_parser3: 1,
                 post_parser4: 0, post_parser5: 1}
 
@@ -34,6 +43,16 @@ subreddits = ["subreddits", "that", "you_have", "moderator", "access_to"]
 title_exceptions = ["SPAM FREE", "I'm doing my job but"]
 
 blogspammr = r.get_redditor('BlogSpammr')
+
+
+def log_separator():
+    logging.info("-"*50)
+
+
+def log_header(message):
+    log_separator()
+    logging.info(message)
+    log_separator()
 
 
 def clean(text):
@@ -158,7 +177,31 @@ def moderate_posts(new_spam_list, subreddit):
                                                              author_name))
                 # sub_logprint(subreddit, "Found one! Nuking submission '{}' by {}"
                              # .format(submission.title, author_name))
-            #submission.remove()
+                # submission.remove()
+
+
+def check_for_updates():
+    # check for updates
+    logging.info("Checking for updates...")
+
+    try:
+        spamfighter2_source = urllib2.urlopen(__source__).read()
+    except urllib2.HTTPError:
+        logging.info("There appears to be an issue contacting Github. Skipping"
+                     " the update check.")
+        log_separator()
+        return None
+
+    github_version = update_parser.search(spamfighter2_source)
+    if github_version is None:
+        github_version = old_update_parser.search(spamfighter2_source)
+
+    if float(github_version.group('version')) > float(__version__):
+        logging.info("There's a newer version available! You should head over "
+                     "to {} and get the newest version!".format(__source__))
+    else:
+        logging.info("We're up to date!")
+        log_separator()
 
 
 if __name__ == '__main__':
@@ -175,11 +218,12 @@ if __name__ == '__main__':
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
 
-    logging.info("-"*50)
-    logging.info("Starting!")
-    logging.info("-"*50)
+    log_header("Starting!")
 
     while True:
+
+        check_for_updates()
+
         try:
             spam_websites = get_blogspammr_recent()
             for sub in subreddits:
