@@ -238,8 +238,9 @@ if __name__ == '__main__':
             sleep(300)
 
         except requests.exceptions.ConnectionError:
-            logging.warning("Issue with requesting new page; waiting 5 "
-                            "minutes.")
+            logging.warning("EXCEPTION: Issue with requesting new page; waiting 5 "
+                            "minutes and trying again.")
+            sleep(300)
 
         else:
             logging.info("Done. Sleeping!")
