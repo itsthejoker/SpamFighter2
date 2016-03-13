@@ -9,7 +9,7 @@ import requests
 from time import sleep
 
 __author__ = "https://github.com/itsthejoker"
-__version__ = 0.93
+__version__ = 0.95
 __source__ = "https://raw.githubusercontent.com/itsthejoker/SpamFighter2/master/spamfighter2.py"
 
 r = praw.Reddit('Python/Praw:com.itsthejoker.spamfighter:{} (by /u/itsthejoker)'
@@ -18,6 +18,7 @@ o = OAuth2Util.OAuth2Util(r)
 o.refresh(force=True)
 
 comment_parser = re.compile("""\[\*\*(?P<spam_url>.*)\*\*\]""")
+comment_parser2 = re.compile("""https://www\.reddit\.com/domain/(?P<spam_url>.*)""")
 wiki_parser = re.compile("""domain: (\[.*)""")
 
 # must return group 1 on parser1, 2, & 3
@@ -29,12 +30,14 @@ post_parser3 = re.compile("""\W (?P<spamsite>.*\.com|.*\.org)""")
 post_parser4 = re.compile("""^[\w\-]+\.[\w]+\\b""")
 post_parser5 = re.compile("""\\b \((?P<spamsite>.*)\)\(""")
 post_parser6 = re.compile("""Domain spammer - (?P<spamsite>[a-zA-Z\.]+)""")
+post_parser7 = re.compile("""Spam website: (?P<spamsite>.*)""")
 
 update_parser = re.compile("""__version__ = (?P<version>[\d\.]+)""")
 old_update_parser = re.compile("""itsthejoker\.spamfighter:(?P<version>[\d\.]+)""")
 
 post_parsers = {post_parser1: 1, post_parser2: 1, post_parser3: 1,
-                post_parser4: 0, post_parser5: 1, post_parser6: 1}
+                post_parser4: 0, post_parser5: 1, post_parser6: 1,
+                post_parser7: 1}
 
 returned_wiki = collections.namedtuple('Returned_Wiki', ['spam_websites',
                                                          'old_wiki',
@@ -42,7 +45,7 @@ returned_wiki = collections.namedtuple('Returned_Wiki', ['spam_websites',
 subreddits = ["subreddits", "that", "you_have", "moderator", "access_to"]
 
 # list of things to ignore post titles for
-title_exceptions = ["SPAM FREE", "I'm doing my job but"]
+title_exceptions = ["SPAM FREE", "I'm doing my job but", "spammer has gone nuts."]
 
 blogspammr = r.get_redditor('BlogSpammr')
 
@@ -63,8 +66,12 @@ def clean(text):
 
 
 def comment_reader(comment):
-    # we subtract 126 characters to get rid of the comment signature
-    spam_site = comment_parser.search(comment[:-126])
+    if "utc" in comment.lower():
+        spam_site = comment_parser2.search(comment)
+    else:
+        # we subtract 126 characters to get rid of the comment signature
+        # this assumes we have a 'CAUTION' comment that contains a sig
+        spam_site = comment_parser.search(comment[:-126])
     return(spam_site.group('spam_url'))
 
 
@@ -106,9 +113,12 @@ def get_blogspammr_recent():
     gen = blogspammr.get_comments(limit=None)  # get last 1000 comments
     submitted_gen = blogspammr.get_submitted(limit=None)  # get last 1000 posts
 
+    comment_triggers = ["caution", "utc"]
+
     for comment in gen:
-        if "caution" in comment.body.lower():
-            spam_websites = add_site(comment_reader, comment.body)
+        for trigger in comment_triggers:
+            if trigger in comment.body.lower():
+                spam_websites = add_site(comment_reader, comment.body)
 
     for post in submitted_gen:
         if "." in post.title.lower():
@@ -188,7 +198,7 @@ def check_for_updates():
 
     try:
         spamfighter2_source = urllib2.urlopen(__source__).read()
-    except urllib2.HTTPError:
+    except (urllib2.HTTPError, urllib2.URLError):
         logging.info("There appears to be an issue contacting Github. Skipping"
                      " the update check.")
         log_separator()
